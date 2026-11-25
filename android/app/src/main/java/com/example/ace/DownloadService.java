@@ -31,18 +31,7 @@ public class DownloadService extends Service {
 
     public static final String ACTION_START = "com.example.ace.DOWNLOAD_START";
     public static final String ACTION_CANCEL = "com.example.ace.DOWNLOAD_CANCEL";
-    public static final String ACTION_START_SINGLE = "com.example.ace.DOWNLOAD_SINGLE";
     public static final String EXTRA_DIR = "dir";
-    public static final String EXTRA_SINGLE_FILE = "single_file";
-
-    // Optional larger models, downloaded on demand from the phone.
-    public static final String LM_BF16 = "acestep-5Hz-lm-1.7B-BF16.gguf";
-    public static final long LM_BF16_SIZE = 3713827104L;
-
-    // DiT timestep-shift variants (change vocal register / tempo feel).
-    public static final String DIT_SHIFT1 = "acestep-v15-turbo-shift1-Q8_0.gguf";
-    public static final String DIT_SHIFT3 = "acestep-v15-turbo-shift3-Q8_0.gguf";
-    public static final long DIT_SHIFT_SIZE = 2549527968L;
 
     public static final String BROADCAST_PROGRESS = "com.example.ace.DL_PROGRESS";
     public static final String BROADCAST_DONE = "com.example.ace.DL_DONE";
@@ -84,49 +73,17 @@ public class DownloadService extends Service {
             cancelled = true;
             return START_NOT_STICKY;
         }
-        if (!ACTION_START.equals(action) && !ACTION_START_SINGLE.equals(action)) {
+        if (!ACTION_START.equals(action)) {
             return START_NOT_STICKY;
         }
 
         final String dir = intent.getStringExtra(EXTRA_DIR);
         if (dir == null) return START_NOT_STICKY;
-        final String single = intent.getStringExtra(EXTRA_SINGLE_FILE);
 
         cancelled = false;
         startForeground(2, buildNotification("Preparing download...", 0));
-        if (ACTION_START_SINGLE.equals(action) && single != null && !single.isEmpty()) {
-            executor.execute(() -> downloadSingle(dir, single));
-        } else {
-            executor.execute(() -> downloadAll(dir));
-        }
+        executor.execute(() -> downloadAll(dir));
         return START_NOT_STICKY;
-    }
-
-    private void downloadSingle(String dir, String name) {
-        File dirFile = new File(dir);
-        if (!dirFile.exists() && !dirFile.mkdirs()) {
-            broadcastError("Cannot create directory: " + dir);
-            finish();
-            return;
-        }
-        long expected = LM_BF16.equals(name) ? LM_BF16_SIZE : 0;
-        if (expected <= 0) {
-            broadcastError("Unknown optional file: " + name);
-            finish();
-            return;
-        }
-        File target = new File(dirFile, name);
-        if (target.exists() && target.length() == expected) {
-            broadcastProgress(0, name, 100, "Already downloaded: " + name);
-        } else if (!downloadFile(name, target, expected, 0)) {
-            if (!cancelled) broadcastError("Failed to download " + name + ". Check logcat.");
-            finish();
-            return;
-        }
-        if (!cancelled) {
-            LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(BROADCAST_DONE));
-        }
-        finish();
     }
 
     private void downloadAll(String dir) {

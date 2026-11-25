@@ -31,20 +31,6 @@
 
                 <TextView style="@style/SectionTitle" android:text="创作 Compose" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="提示词预设 · tap to choose"
-                    android:textSize="12sp"
-                    android:textColor="@color/primary" />
-                <Spinner
-                    android:id="@+id/spinnerCaptionPreset"
-                    android:layout_width="match_parent"
-                    android:layout_height="42dp"
-                    android:background="@drawable/preset_spinner_bg"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp" />
                 <TextView style="@style/FieldLabel" android:text="Prompt / style" android:layout_marginTop="12dp" />
                 <EditText
                     android:id="@+id/editCaption"
@@ -113,7 +99,7 @@
                         android:id="@+id/editSeed"
                         android:layout_width="120dp"
                         android:layout_height="wrap_content"
-                        android:text="-1"
+                        android:text="20"
                         android:inputType="numberSigned"
                         android:textSize="14sp"
                         android:background="@color/chip_bg"
@@ -149,6 +135,7 @@
                         android:layout_height="wrap_content"
                         android:hint="auto"
                         android:inputType="number"
+                        android:text="190"
                         android:textSize="14sp"
                         android:background="@color/chip_bg"
                         android:padding="8dp"
@@ -173,6 +160,7 @@
                         android:layout_width="150dp"
                         android:layout_height="wrap_content"
                         android:hint="auto"
+                        android:text="E minor"
                         android:textSize="14sp"
                         android:background="@color/chip_bg"
                         android:padding="8dp"
@@ -198,28 +186,12 @@
                         android:layout_height="wrap_content"
                         android:hint="auto"
                         android:inputType="number"
+                        android:text="4"
                         android:textSize="14sp"
                         android:background="@color/chip_bg"
                         android:padding="8dp"
                         android:gravity="center" />
                 </LinearLayout>
-
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/switchKeepCaption"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:checked="true"
-                    android:text="Keep my caption (recommended for vocals)"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="OFF lets the planner rewrite the style; it can drop ' vocal ' and suppress singing"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="11sp" />
 
                 <Button
                     android:id="@+id/btnGenerate"

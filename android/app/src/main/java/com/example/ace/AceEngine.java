@@ -10,9 +10,6 @@ public final class AceEngine {
     private AceEngine() {
     }
 
-    /** Diagnostic self test; returns result string, logs detail to logcat. */
-    public static native String nativeSelfTest(String modelsDir);
-
     /** @return native handle, or 0 on failure */
     public static native long nativeInit(String modelsDir, boolean keepLoaded);
 
@@ -32,13 +29,7 @@ public final class AceEngine {
     /** Pick the VAE decoder GGUF filename for an engine instance. */
     public static native void nativeSetVae(long handle, String filename);
 
-    /** Override VAE tiled-decode chunk/overlap (official: 1024/64). */
-    public static native void nativeSetVaeTiling(long handle, int chunk, int overlap);
-
-    /** Switch planner LM between official Q8_0 and BF16. */
-    public static native void nativeSetLmPrecision(long handle, boolean bf16);
-
-    /** Pick the DiT GGUF variant (turbo / shift1 / shift3 / continuous). */
+    /** Pick the DiT GGUF file (fixed to official turbo in this build). */
     public static native void nativeSetDit(long handle, String filename);
 
     // Convenience aliases used by GenerationService.
@@ -68,14 +59,6 @@ public final class AceEngine {
 
     public static void setVae(long h, String filename) {
         nativeSetVae(h, filename);
-    }
-
-    public static void setVaeTiling(long h, int chunk, int overlap) {
-        nativeSetVaeTiling(h, chunk, overlap);
-    }
-
-    public static void setLmPrecision(long h, boolean bf16) {
-        nativeSetLmPrecision(h, bf16);
     }
 
     public static void setDit(long h, String filename) {

@@ -10,8 +10,8 @@ android {
         applicationId "com.example.ace"
         minSdk 26
         targetSdk 34
-        versionCode 27
-        versionName "0.9.4-channel-fix"
+        versionCode 28
+        versionName "1.0-stable"
 
         ndk {
             abiFilters 'arm64-v8a'

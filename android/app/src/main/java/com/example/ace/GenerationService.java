@@ -49,15 +49,10 @@ public class GenerationService extends Service {
     public static final String EXTRA_SYNTH_MS = "synth_ms";
     public static final String EXTRA_FILE_SIZE = "file_size";
     public static final String EXTRA_SUCCESS = "success";
-    public static final String EXTRA_FLASH_ATTN = "flash_attn";
     public static final String EXTRA_VAE_FILE = "vae_file";
-    public static final String EXTRA_VAE_TILING = "vae_official_tiling";
-    public static final String EXTRA_KEEP_CAPTION = "keep_caption";
     public static final String EXTRA_PLANNER_CAPTION = "planner_caption";
     public static final String EXTRA_PLANNER_META = "planner_meta";
     public static final String EXTRA_CODES_COUNT = "codes_count";
-    public static final String EXTRA_BF16_LM = "bf16_lm";
-    public static final String EXTRA_DIT_FILE = "dit_file";
     public static final String EXTRA_BPM = "bpm";
     public static final String EXTRA_KEY = "key";
     public static final String EXTRA_TIMESIG = "timesig";
@@ -90,12 +85,6 @@ public class GenerationService extends Service {
         final int duration = intent.getIntExtra(EXTRA_DURATION, 30);
         final String output = intent.getStringExtra(EXTRA_OUTPUT);
         final int seed = intent.getIntExtra(EXTRA_SEED, -1);
-        final boolean flashAttn = intent.getBooleanExtra(EXTRA_FLASH_ATTN, true);
-        final String vaeFile = intent.getStringExtra(EXTRA_VAE_FILE);
-        final boolean officialTiling = intent.getBooleanExtra(EXTRA_VAE_TILING, false);
-        final boolean keepCaption = intent.getBooleanExtra(EXTRA_KEEP_CAPTION, true);
-        final boolean bf16Lm = intent.getBooleanExtra(EXTRA_BF16_LM, false);
-        final String ditFile = intent.getStringExtra(EXTRA_DIT_FILE);
         final int bpm = intent.getIntExtra(EXTRA_BPM, 0);
         final String key = intent.getStringExtra(EXTRA_KEY);
         final int timesig = intent.getIntExtra(EXTRA_TIMESIG, 0);
@@ -103,15 +92,19 @@ public class GenerationService extends Service {
         cancelled = false;
         startForeground(1, buildNotification("Generating...", 0));
         executor.execute(() -> runGeneration(modelsDir, caption, lyrics, duration, output,
-                                              seed, flashAttn, vaeFile, officialTiling, keepCaption,
-                                              bf16Lm, ditFile, bpm, key, timesig));
+                                              seed, bpm, key, timesig));
         return START_NOT_STICKY;
     }
 
+    // Verified stable configuration (no diagnostic switches).
+    private static final boolean FLASH_ATTN = true;
+    private static final String VAE_FILE = "vae-BF16.gguf";
+    private static final String DIT_FILE = "acestep-v15-turbo-Q8_0.gguf";
+    private static final boolean KEEP_CAPTION = true;
+
     private void runGeneration(String modelsDir, String caption, String lyrics,
-                               int duration, String output, int seed, boolean flashAttn,
-                               String vaeFile, boolean officialTiling, boolean keepCaption,
-                               boolean bf16Lm, String ditFile, int bpm, String key, int timesig) {
+                               int duration, String output, int seed,
+                               int bpm, String key, int timesig) {
         long startMs = System.currentTimeMillis();
         long lmMs = 0;
         long synthMs = 0;
@@ -124,19 +117,16 @@ public class GenerationService extends Service {
             }
 
             publishProgress(0, 0, "Loading engine...");
-            AceEngine.setFlashAttn(flashAttn);
+            AceEngine.setFlashAttn(FLASH_ATTN);
             nativeHandle = AceEngine.init(modelsDir, true);
             if (nativeHandle == 0) {
                 throw new RuntimeException("Native engine init failed. Check logcat (tag AceJNI).");
             }
-            if (vaeFile != null && !vaeFile.isEmpty()) AceEngine.setVae(nativeHandle, vaeFile);
-            if (officialTiling) AceEngine.setVaeTiling(nativeHandle, 1024, 64);
-            if (bf16Lm) AceEngine.setLmPrecision(nativeHandle, true);
-            if (ditFile != null && !ditFile.isEmpty()) AceEngine.setDit(nativeHandle, ditFile);
+            AceEngine.setVae(nativeHandle, VAE_FILE);
+            AceEngine.setDit(nativeHandle, DIT_FILE);
             if (cancelled) return;
 
-            String requestJson = buildRequestJson(caption, lyrics, duration, seed, keepCaption,
-                                                  bpm, key, timesig);
+            String requestJson = buildRequestJson(caption, lyrics, duration, seed, bpm, key, timesig);
             publishProgress(1, 5, "Planning lyrics and structure...");
             long lmStart = System.currentTimeMillis();
             String enriched = AceEngine.lm(nativeHandle, requestJson);
@@ -178,14 +168,14 @@ public class GenerationService extends Service {
             long endMs = System.currentTimeMillis();
             long fileSize = new File(output).length();
             publishProgress(4, 100, "Done: " + result);
-            broadcastDone(result, startMs, endMs, lmMs, synthMs, fileSize, seed, flashAttn, vaeFile,
-                          plannerCaption, plannerMeta, codesCount, keepCaption, bf16Lm);
+            broadcastDone(result, startMs, endMs, lmMs, synthMs, fileSize, seed,
+                          plannerCaption, plannerMeta, codesCount);
         } catch (Exception e) {
             Log.e(TAG, "Generation failed", e);
             long endMs = System.currentTimeMillis();
             broadcastError(e.getMessage() != null ? e.getMessage() : e.toString(),
-                    startMs, endMs, lmMs, synthMs, seed, flashAttn, vaeFile,
-                    plannerCaption, plannerMeta, codesCount, keepCaption, bf16Lm);
+                    startMs, endMs, lmMs, synthMs, seed,
+                    plannerCaption, plannerMeta, codesCount);
         } finally {
             if (nativeHandle != 0) {
                 AceEngine.release(nativeHandle);
@@ -206,8 +196,7 @@ public class GenerationService extends Service {
     }
 
     private String buildRequestJson(String caption, String lyrics, int duration, int seed,
-                                    boolean keepCaption, int bpm, String key, int timesig)
-            throws JSONException {
+                                    int bpm, String key, int timesig) throws JSONException {
         String cleanLyrics = lyrics == null ? "" : lyrics.trim();
         // ACE-Step treats "[Instrumental]" (exact match) as the instrumental-mode
         // signal. The old default pre-filled that tag, so users appended their
@@ -235,7 +224,7 @@ public class GenerationService extends Service {
         o.put("duration", duration);
         o.put("output_format", "wav16");
         o.put("lm_temperature", 0.85);
-        o.put("use_cot_caption", !keepCaption);
+        o.put("use_cot_caption", !KEEP_CAPTION);
         o.put("seed", seed);
         return o.toString();
     }
@@ -250,9 +239,7 @@ public class GenerationService extends Service {
 
     private void broadcastDone(String path, long startMs, long endMs,
                                long lmMs, long synthMs, long fileSize,
-                               int seed, boolean flashAttn, String vaeFile,
-                               String plannerCaption, String plannerMeta, int codesCount,
-                               boolean keepCaption, boolean bf16Lm) {
+                               int seed, String plannerCaption, String plannerMeta, int codesCount) {
         Intent i = new Intent(BROADCAST_DONE);
         i.putExtra(EXTRA_MESSAGE, path);
         i.putExtra(EXTRA_START_MS, startMs);
@@ -262,21 +249,17 @@ public class GenerationService extends Service {
         i.putExtra(EXTRA_SYNTH_MS, synthMs);
         i.putExtra(EXTRA_FILE_SIZE, fileSize);
         i.putExtra(EXTRA_SEED, (long) seed);
-        i.putExtra(EXTRA_FLASH_ATTN, flashAttn);
-        i.putExtra(EXTRA_VAE_FILE, vaeFile == null ? "" : vaeFile);
+        i.putExtra(EXTRA_VAE_FILE, VAE_FILE);
         i.putExtra(EXTRA_PLANNER_CAPTION, plannerCaption == null ? "" : plannerCaption);
         i.putExtra(EXTRA_PLANNER_META, plannerMeta == null ? "" : plannerMeta);
         i.putExtra(EXTRA_CODES_COUNT, codesCount);
-        i.putExtra(EXTRA_KEEP_CAPTION, keepCaption);
-        i.putExtra(EXTRA_BF16_LM, bf16Lm);
         i.putExtra(EXTRA_SUCCESS, true);
         LocalBroadcastManager.getInstance(this).sendBroadcast(i);
     }
 
     private void broadcastError(String message, long startMs, long endMs,
-                                long lmMs, long synthMs, int seed, boolean flashAttn, String vaeFile,
-                                String plannerCaption, String plannerMeta, int codesCount,
-                                boolean keepCaption, boolean bf16Lm) {
+                                long lmMs, long synthMs, int seed,
+                                String plannerCaption, String plannerMeta, int codesCount) {
         Intent i = new Intent(BROADCAST_ERROR);
         i.putExtra(EXTRA_MESSAGE, message);
         i.putExtra(EXTRA_START_MS, startMs);
@@ -285,13 +268,10 @@ public class GenerationService extends Service {
         i.putExtra(EXTRA_LM_MS, lmMs);
         i.putExtra(EXTRA_SYNTH_MS, synthMs);
         i.putExtra(EXTRA_SEED, (long) seed);
-        i.putExtra(EXTRA_FLASH_ATTN, flashAttn);
-        i.putExtra(EXTRA_VAE_FILE, vaeFile == null ? "" : vaeFile);
+        i.putExtra(EXTRA_VAE_FILE, VAE_FILE);
         i.putExtra(EXTRA_PLANNER_CAPTION, plannerCaption == null ? "" : plannerCaption);
         i.putExtra(EXTRA_PLANNER_META, plannerMeta == null ? "" : plannerMeta);
         i.putExtra(EXTRA_CODES_COUNT, codesCount);
-        i.putExtra(EXTRA_KEEP_CAPTION, keepCaption);
-        i.putExtra(EXTRA_BF16_LM, bf16Lm);
         i.putExtra(EXTRA_SUCCESS, false);
         LocalBroadcastManager.getInstance(this).sendBroadcast(i);
     }

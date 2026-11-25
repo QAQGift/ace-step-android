@@ -21,7 +21,6 @@
 struct AceEngine {
     std::string models_dir;
     std::string lm_path;
-    bool         use_bf16_lm = false;
     std::string text_enc_path;
     std::string dit_path;
     std::string vae_path;
@@ -59,7 +58,6 @@ Java_com_example_ace_AceEngine_nativeInit(JNIEnv * env, jclass /*clazz*/,
     if (e->models_dir.empty() || e->models_dir.back() != '/') e->models_dir += '/';
 
     e->lm_path = e->models_dir + "acestep-5Hz-lm-1.7B-Q8_0.gguf";
-    (void) e->use_bf16_lm;  // set via nativeSetLmPrecision before nativeLm
     e->text_enc_path = e->models_dir + "Qwen3-Embedding-0.6B-Q8_0.gguf";
     e->dit_path = e->models_dir + "acestep-v15-turbo-Q8_0.gguf";
     e->vae_path = e->models_dir + "vae-BF16.gguf";
@@ -94,19 +92,7 @@ Java_com_example_ace_AceEngine_nativeSetVae(JNIEnv * env, jclass, jlong handle,
     LOGI("VAE decoder set to %s", e->vae_path.c_str());
 }
 
-extern "C" JNIEXPORT void JNICALL
-Java_com_example_ace_AceEngine_nativeSetLmPrecision(JNIEnv *, jclass, jlong handle,
-                                                    jboolean bf16) {
-    auto * e = reinterpret_cast<AceEngine *>(handle);
-    if (!e) return;
-    e->use_bf16_lm = bf16;
-    e->lm_path = e->models_dir + (bf16 ? "acestep-5Hz-lm-1.7B-BF16.gguf"
-                                       : "acestep-5Hz-lm-1.7B-Q8_0.gguf");
-    LOGI("LM precision set to %s: %s", bf16 ? "BF16" : "Q8_0", e->lm_path.c_str());
-}
-
-// Choose the DiT GGUF variant (turbo / shift1 / shift3 / continuous).
-// shift1 suits low/dark male vocals, shift3 suits general vocals.
+// Set the DiT GGUF file (fixed to official turbo in this build).
 extern "C" JNIEXPORT void JNICALL
 Java_com_example_ace_AceEngine_nativeSetDit(JNIEnv * env, jclass, jlong handle,
                                            jstring j_name) {
@@ -119,17 +105,7 @@ Java_com_example_ace_AceEngine_nativeSetDit(JNIEnv * env, jclass, jlong handle,
     } else {
         e->dit_path = name;
     }
-    LOGI("DiT variant set to %s", e->dit_path.c_str());
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_com_example_ace_AceEngine_nativeSetVaeTiling(JNIEnv *, jclass, jlong handle,
-                                                  jint chunk, jint overlap) {
-    auto * e = reinterpret_cast<AceEngine *>(handle);
-    if (!e) return;
-    e->vae_chunk   = chunk;
-    e->vae_overlap = overlap;
-    LOGI("VAE tiling set to chunk=%d overlap=%d", chunk, overlap);
+    LOGI("DiT set to %s", e->dit_path.c_str());
 }
 
 // A/B switch: backend_use_flash_attn() reads this env var on every call from
@@ -308,48 +284,6 @@ Java_com_example_ace_AceEngine_nativeSynth(JNIEnv * env, jclass /*clazz*/,
     }
     LOGI("audio written: %s", out_path.c_str());
     return env->NewStringUTF(out_path.c_str());
-}
-
-// Diagnostic: try to load DiT metadata and report each step to logcat.
-// Called at app startup so we can see failures even if the UI is unresponsive.
-extern "C" JNIEXPORT jstring JNICALL
-Java_com_example_ace_AceEngine_nativeSelfTest(JNIEnv * env, jclass /*clazz*/,
-                                              jstring j_models_dir) {
-    std::string dir = jstring_to_std(env, j_models_dir);
-    if (dir.empty() || dir.back() != '/') dir += '/';
-    std::string dit = dir + "acestep-v15-turbo-Q8_0.gguf";
-
-    LOGI("=== SELF TEST START ===");
-    LOGI("DiT path: %s", dit.c_str());
-
-    FILE * f = fopen(dit.c_str(), "rb");
-    if (!f) {
-        LOGE("SELF TEST: cannot open DiT file");
-        return env->NewStringUTF("cannot open DiT file");
-    }
-    fseek(f, 0, SEEK_END);
-    long sz = ftell(f);
-    fclose(f);
-    LOGI("DiT file size: %ld", sz);
-
-    ModelStore * store = store_create(EVICT_STRICT);
-    if (!store) {
-        LOGE("SELF TEST: store_create failed");
-        return env->NewStringUTF("store_create failed");
-    }
-    LOGI("SELF TEST: store created");
-
-    const DiTMeta * meta = store_dit_meta(store, dit.c_str());
-    if (!meta) {
-        LOGE("SELF TEST: store_dit_meta FAILED");
-        store_free(store);
-        return env->NewStringUTF("store_dit_meta FAILED - see AceNative");
-    }
-    LOGI("SELF TEST: store_dit_meta OK, layers=%d hidden=%d",
-         meta->cfg.n_layers, meta->cfg.hidden_size);
-    store_free(store);
-    LOGI("=== SELF TEST PASS ===");
-    return env->NewStringUTF("PASS");
 }
 
 extern "C" JNIEXPORT void JNICALL

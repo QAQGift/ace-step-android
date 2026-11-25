@@ -20,17 +20,14 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.ArrayAdapter;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -52,13 +49,10 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQ_PERMISSIONS = 42;
     private static final String PREFS_AB = "ace_ab";
     private static final String PREF_SEED = "seed";
-    private static final String PREF_FLASH_ATTN = "flash_attn";
-    private static final String PREF_SCRAG_VAE = "scrag_vae";
-    private static final String PREF_OFFICIAL_TILING = "official_tiling";
-    private static final String PREF_KEEP_CAPTION = "keep_caption";
-    private static final String PREF_BF16_LM = "bf16_lm";
-    private static final String PREF_DIT_VARIANT = "dit_variant";
-    private static final String PREF_CAPTION_PRESET = "caption_preset";
+
+    // Stable, verified configuration (hardcoded — no diagnostic toggles).
+    private static final boolean FLASH_ATTN = true;
+    private static final String DIT_FILE = "acestep-v15-turbo-Q8_0.gguf";
 
     private static final String[] MODEL_FILES = {
             "vae-BF16.gguf",
@@ -77,8 +71,6 @@ public class MainActivity extends AppCompatActivity {
     private View composeView;
     private EditText editCaption, editLyrics, editDuration, editSeed;
     private EditText editBpm, editKey, editTimesig;
-    private Spinner spinnerCaptionPreset;
-    private SwitchCompat switchKeepCaption;
     private Button btnGenerate, btnPlay;
     private ProgressBar progress;
     private TextView textStatus;
@@ -89,14 +81,6 @@ public class MainActivity extends AppCompatActivity {
     // Models page
     private View modelsView;
     private EditText editModels;
-    private SwitchCompat switchFlashAttn, switchScragVae, switchOfficialTiling, switchBf16Lm;
-    private Button btnDownloadBf16;
-    private ProgressBar bf16Progress;
-    private TextView textBf16Status;
-    private Spinner spinnerDit;
-    private Button btnDownloadShift1, btnDownloadShift3;
-    private ProgressBar ditProgress;
-    private TextView textDitStatus;
     private Button btnDownload;
     private ProgressBar downloadProgress;
     private TextView textModelStatus;
@@ -160,30 +144,16 @@ public class MainActivity extends AppCompatActivity {
                 String msg = intent.getStringExtra(DownloadService.EXTRA_MESSAGE);
                 downloadProgress.setProgress(p);
                 if (textModelStatus != null) textModelStatus.setText(msg);
-                String file = intent.getStringExtra(DownloadService.EXTRA_FILE);
-                if (DownloadService.LM_BF16.equals(file)) {
-                    if (bf16Progress != null) bf16Progress.setProgress(p);
-                    if (textBf16Status != null) textBf16Status.setText(msg);
-                } else if (DownloadService.DIT_SHIFT1.equals(file)
-                        || DownloadService.DIT_SHIFT3.equals(file)) {
-                    if (ditProgress != null) ditProgress.setProgress(p);
-                    if (textDitStatus != null) textDitStatus.setText(file + ": " + msg);
-                }
             } else if (DownloadService.BROADCAST_DONE.equals(action)) {
                 downloadProgress.setProgress(100);
                 if (textModelStatus != null) textModelStatus.setText("All models downloaded");
                 btnDownload.setEnabled(true);
-                if (btnDownloadBf16 != null) btnDownloadBf16.setEnabled(true);
-                refreshBf16Status();
-                refreshDitStatus();
                 Toast.makeText(MainActivity.this, "Models ready", Toast.LENGTH_SHORT).show();
                 checkModels();
             } else if (DownloadService.BROADCAST_ERROR.equals(action)) {
                 String err = intent.getStringExtra(DownloadService.EXTRA_MESSAGE);
                 btnDownload.setEnabled(true);
-                if (btnDownloadBf16 != null) btnDownloadBf16.setEnabled(true);
                 if (textModelStatus != null) textModelStatus.setText("Download error: " + err);
-                if (textBf16Status != null) textBf16Status.setText("Download failed: " + err);
                 Toast.makeText(MainActivity.this, "Download failed: " + err, Toast.LENGTH_LONG).show();
             }
         }
@@ -261,49 +231,11 @@ public class MainActivity extends AppCompatActivity {
         editBpm = composeView.findViewById(R.id.editBpm);
         editKey = composeView.findViewById(R.id.editKey);
         editTimesig = composeView.findViewById(R.id.editTimesig);
-        spinnerCaptionPreset = composeView.findViewById(R.id.spinnerCaptionPreset);
-        String[] presetNames = getResources().getStringArray(R.array.caption_presets);
-        String[] presetValues = getResources().getStringArray(R.array.caption_preset_values);
-        ArrayAdapter<String> presetAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, presetNames);
-        presetAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerCaptionPreset.setAdapter(presetAdapter);
-        SharedPreferences p = getSharedPreferences(PREFS_AB, MODE_PRIVATE);
-        int presetIdx = p.getInt(PREF_CAPTION_PRESET, 0);
-        if (presetIdx < 0 || presetIdx >= presetValues.length) presetIdx = 0;
-        final String[] finalValues = presetValues;
-        spinnerCaptionPreset.setSelection(presetIdx);
-        editCaption.setText(finalValues[presetIdx]);
-        if (presetIdx == 5) {
-            editBpm.setText("190");
-            editKey.setText("E minor");
-            editTimesig.setText("4");
-        }
-        spinnerCaptionPreset.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view,
-                                                 int pos, long id) {
-                if (pos >= 0 && pos < finalValues.length) {
-                    editCaption.setText(finalValues[pos]);
-                    // Preset 5 replicates the known-good ComfyUI sample:
-                    // pin all metadata so the planner never guesses.
-                    if (pos == 5) {
-                        editBpm.setText("190");
-                        editKey.setText("E minor");
-                        editTimesig.setText("4");
-                    }
-                    getSharedPreferences(PREFS_AB, MODE_PRIVATE).edit()
-                            .putInt(PREF_CAPTION_PRESET, pos).apply();
-                }
-            }
-            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
-        });
         editLyrics = composeView.findViewById(R.id.editLyrics);
         editDuration = composeView.findViewById(R.id.editDuration);
         editSeed = composeView.findViewById(R.id.editSeed);
-        switchKeepCaption = composeView.findViewById(R.id.switchKeepCaption);
         SharedPreferences prefs = getSharedPreferences(PREFS_AB, MODE_PRIVATE);
-        editSeed.setText(String.valueOf(prefs.getLong(PREF_SEED, -1)));
-        switchKeepCaption.setChecked(prefs.getBoolean(PREF_KEEP_CAPTION, true));
+        editSeed.setText(String.valueOf(prefs.getLong(PREF_SEED, 20)));
         btnGenerate = composeView.findViewById(R.id.btnGenerate);
         btnPlay = composeView.findViewById(R.id.btnPlay);
         progress = composeView.findViewById(R.id.progress);
@@ -327,141 +259,8 @@ public class MainActivity extends AppCompatActivity {
         btnDownload = modelsView.findViewById(R.id.btnDownload);
         downloadProgress = modelsView.findViewById(R.id.downloadProgress);
         textModelStatus = modelsView.findViewById(R.id.textModelStatus);
-
-        switchFlashAttn = modelsView.findViewById(R.id.switchFlashAttn);
-        SharedPreferences prefs = getSharedPreferences(PREFS_AB, MODE_PRIVATE);
-        boolean flashAttn = prefs.getBoolean(PREF_FLASH_ATTN, true);
-        switchFlashAttn.setChecked(flashAttn);
-        AceEngine.setFlashAttn(flashAttn);
-        switchFlashAttn.setOnCheckedChangeListener((button, checked) -> {
-            prefs.edit().putBoolean(PREF_FLASH_ATTN, checked).apply();
-            AceEngine.setFlashAttn(checked);
-            Toast.makeText(MainActivity.this,
-                    "CPU flash attention " + (checked ? "ON" : "OFF"), Toast.LENGTH_SHORT).show();
-        });
-
-        switchScragVae = modelsView.findViewById(R.id.switchScragVae);
-        switchScragVae.setChecked(prefs.getBoolean(PREF_SCRAG_VAE, false));
-        switchScragVae.setOnCheckedChangeListener((button, checked) ->
-                prefs.edit().putBoolean(PREF_SCRAG_VAE, checked).apply());
-
-        switchOfficialTiling = modelsView.findViewById(R.id.switchOfficialTiling);
-        switchOfficialTiling.setChecked(prefs.getBoolean(PREF_OFFICIAL_TILING, false));
-        switchOfficialTiling.setOnCheckedChangeListener((button, checked) ->
-                prefs.edit().putBoolean(PREF_OFFICIAL_TILING, checked).apply());
-
-        btnDownloadBf16 = modelsView.findViewById(R.id.btnDownloadBf16);
-        bf16Progress = modelsView.findViewById(R.id.bf16Progress);
-        textBf16Status = modelsView.findViewById(R.id.textBf16Status);
-        switchBf16Lm = modelsView.findViewById(R.id.switchBf16Lm);
-        boolean useBf16 = prefs.getBoolean(PREF_BF16_LM, false);
-        switchBf16Lm.setChecked(useBf16);
-        refreshBf16Status();
-        switchBf16Lm.setOnCheckedChangeListener((button, checked) -> {
-            prefs.edit().putBoolean(PREF_BF16_LM, checked).apply();
-            refreshBf16Status();
-        });
-        btnDownloadBf16.setOnClickListener(v -> startBf16Download());
-
-        // DiT variant selector + on-device downloads
-        spinnerDit = modelsView.findViewById(R.id.spinnerDit);
-        String[] ditChoices = {"turbo (default)", "shift3 (clear vocals)", "shift1 (low male vocal)",
-                "continuous"};
-        ArrayAdapter<String> ditAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, ditChoices);
-        ditAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerDit.setAdapter(ditAdapter);
-        int ditIdx = prefs.getInt(PREF_DIT_VARIANT, 0);
-        if (ditIdx < 0 || ditIdx >= ditChoices.length) ditIdx = 0;
-        spinnerDit.setSelection(ditIdx);
-        spinnerDit.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view,
-                                                 int pos, long id) {
-                prefs.edit().putInt(PREF_DIT_VARIANT, pos).apply();
-                refreshDitStatus();
-            }
-            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
-        });
-        btnDownloadShift1 = modelsView.findViewById(R.id.btnDownloadShift1);
-        btnDownloadShift3 = modelsView.findViewById(R.id.btnDownloadShift3);
-        ditProgress = modelsView.findViewById(R.id.ditProgress);
-        textDitStatus = modelsView.findViewById(R.id.textDitStatus);
-        btnDownloadShift1.setOnClickListener(v -> startDitDownload(DownloadService.DIT_SHIFT1));
-        btnDownloadShift3.setOnClickListener(v -> startDitDownload(DownloadService.DIT_SHIFT3));
-        refreshDitStatus();
-    }
-
-    private String ditFileForSelection() {
-        int pos = spinnerDit != null ? spinnerDit.getSelectedItemPosition() : 0;
-        switch (pos) {
-            case 1: return DownloadService.DIT_SHIFT3;
-            case 2: return DownloadService.DIT_SHIFT1;
-            case 3: return "acestep-v15-turbo-continuous-Q8_0.gguf";
-            default: return "acestep-v15-turbo-Q8_0.gguf";
-        }
-    }
-
-    private void refreshDitStatus() {
-        if (textDitStatus == null) return;
-        String dir = editModels.getText().toString().trim();
-        String sel = ditFileForSelection();
-        File f = new File(dir, sel);
-        long expected = sel.equals("acestep-v15-turbo-Q8_0.gguf")
-                ? 2549528000L : DownloadService.DIT_SHIFT_SIZE;
-        boolean ready = f.exists() && f.length() == expected;
-        textDitStatus.setText(ready ? "Ready: " + sel + " (" + f.length() / 1024 / 1024 + " MB)"
-                : "Not downloaded: " + sel);
-    }
-
-    private void startDitDownload(String file) {
-        String dir = editModels.getText().toString().trim();
-        if (dir.isEmpty() || !isOnline()) {
-            Toast.makeText(this, "Check model dir and network", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        File target = new File(dir, file);
-        if (target.exists()) {
-            Toast.makeText(this, "File already exists — check size in Models", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        Intent i = new Intent(this, DownloadService.class);
-        i.setAction(DownloadService.ACTION_START_SINGLE);
-        i.putExtra(DownloadService.EXTRA_DIR, dir);
-        i.putExtra(DownloadService.EXTRA_SINGLE_FILE, file);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(i);
-        else startService(i);
-        if (ditProgress != null) ditProgress.setProgress(0);
-        if (textDitStatus != null) textDitStatus.setText("Downloading " + file + "...");
-        Toast.makeText(this, "Downloading " + file, Toast.LENGTH_SHORT).show();
-    }
-
-    private void refreshBf16Status() {
-        if (textBf16Status == null) return;
-        File f = new File(editModels.getText().toString().trim(), DownloadService.LM_BF16);
-        boolean exists = f.exists() && f.length() == DownloadService.LM_BF16_SIZE;
-        textBf16Status.setText(exists ? "BF16 ready (" + f.length() / 1024 / 1024 + " MB)"
-                : "BF16 not downloaded yet");
-    }
-
-    private void startBf16Download() {
-        String dir = editModels.getText().toString().trim();
-        if (dir.isEmpty()) {
-            Toast.makeText(this, "Set model directory first", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        File f = new File(dir, DownloadService.LM_BF16);
-        if (f.exists() && f.length() == DownloadService.LM_BF16_SIZE) {
-            Toast.makeText(this, "BF16 already downloaded", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        Intent i = new Intent(this, DownloadService.class);
-        i.setAction(DownloadService.ACTION_START_SINGLE);
-        i.putExtra(DownloadService.EXTRA_DIR, dir);
-        i.putExtra(DownloadService.EXTRA_SINGLE_FILE, DownloadService.LM_BF16);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(i);
-        else startService(i);
-        btnDownloadBf16.setEnabled(false);
-        textBf16Status.setText("Downloading BF16 LM...");
+        // Apply the single verified configuration on startup.
+        AceEngine.setFlashAttn(FLASH_ATTN);
     }
 
     private void bindHistoryViews() {
@@ -505,13 +304,10 @@ public class MainActivity extends AppCompatActivity {
         r.lmMs = intent.getLongExtra(GenerationService.EXTRA_LM_MS, 0);
         r.synthMs = intent.getLongExtra(GenerationService.EXTRA_SYNTH_MS, 0);
         r.seed = intent.getLongExtra(GenerationService.EXTRA_SEED, -1);
-        r.flashAttn = intent.getBooleanExtra(GenerationService.EXTRA_FLASH_ATTN, true);
         r.vaeFile = intent.getStringExtra(GenerationService.EXTRA_VAE_FILE);
-        r.keepCaption = intent.getBooleanExtra(GenerationService.EXTRA_KEEP_CAPTION, true);
         r.plannerCaption = intent.getStringExtra(GenerationService.EXTRA_PLANNER_CAPTION);
         r.plannerMeta = intent.getStringExtra(GenerationService.EXTRA_PLANNER_META);
         r.codesCount = intent.getIntExtra(GenerationService.EXTRA_CODES_COUNT, 0);
-        r.bf16Lm = intent.getBooleanExtra(GenerationService.EXTRA_BF16_LM, false);
         r.success = success;
         r.id = r.startMs;
         if (success) {
@@ -550,17 +346,15 @@ public class MainActivity extends AppCompatActivity {
         View v = getLayoutInflater().inflate(R.layout.dialog_detail, null);
         ((TextView) v.findViewById(R.id.dTime)).setText(formatFullTime(r.startMs));
         ((TextView) v.findViewById(R.id.dTiming)).setText(String.format(Locale.getDefault(),
-                "Total %s  ·  LM %s  ·  DiT+VAE %s  ·  Requested %ds\nSeed %d  ·  FlashAttn %s  ·  LM %s  ·  VAE %s",
+                "Total %s  ·  LM %s  ·  DiT+VAE %s  ·  Requested %ds\nSeed %d  ·  VAE %s",
                 formatMs(r.totalMs), formatMs(r.lmMs), formatMs(r.synthMs), r.duration,
-                r.seed, r.flashAttn ? "ON" : "OFF",
-                r.bf16Lm ? "BF16" : "Q8_0",
-                r.vaeFile == null || r.vaeFile.isEmpty() ? "stock" : r.vaeFile));
+                r.seed, r.vaeFile == null || r.vaeFile.isEmpty() ? "stock" : r.vaeFile));
         ((TextView) v.findViewById(R.id.dCaption)).setText(
                 r.caption == null || r.caption.isEmpty() ? "(none)" : r.caption);
         String planner = (r.plannerCaption == null || r.plannerCaption.isEmpty()
                 ? "(no rewrite data)" : r.plannerCaption)
                 + "\n" + (r.plannerMeta == null || r.plannerMeta.isEmpty() ? "" : r.plannerMeta)
-                + "\ncodes=" + r.codesCount + " · keepCaption=" + r.keepCaption;
+                + "\ncodes=" + r.codesCount;
         ((TextView) v.findViewById(R.id.dPlanner)).setText(planner);
         ((TextView) v.findViewById(R.id.dLyrics)).setText(
                 r.lyrics == null || r.lyrics.isEmpty() ? "(none)" : r.lyrics);
@@ -682,10 +476,9 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Download all 4 models first (" + ready + "/4)", Toast.LENGTH_LONG).show();
             return;
         }
-        boolean useScrag = switchScragVae != null && switchScragVae.isChecked();
-        String vaeFile = useScrag ? "scragvae-BF16.gguf" : "vae-BF16.gguf";
-        if (useScrag && !new File(dir, vaeFile).exists()) {
-            Toast.makeText(this, "Missing scragvae-BF16.gguf in models folder", Toast.LENGTH_LONG).show();
+        // Verify the fixed DiT file is present (part of the 4 base models).
+        if (!new File(dir, DIT_FILE).exists()) {
+            Toast.makeText(this, "Missing " + DIT_FILE + " — download models first", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -701,22 +494,6 @@ public class MainActivity extends AppCompatActivity {
         i.putExtra(GenerationService.EXTRA_DURATION, duration);
         i.putExtra(GenerationService.EXTRA_OUTPUT, output);
         i.putExtra(GenerationService.EXTRA_SEED, (int) seed);
-        i.putExtra(GenerationService.EXTRA_FLASH_ATTN, switchFlashAttn.isChecked());
-        i.putExtra(GenerationService.EXTRA_VAE_FILE, vaeFile);
-        i.putExtra(GenerationService.EXTRA_VAE_TILING, switchOfficialTiling.isChecked());
-        i.putExtra(GenerationService.EXTRA_KEEP_CAPTION, switchKeepCaption.isChecked());
-        boolean useBf16 = switchBf16Lm != null && switchBf16Lm.isChecked();
-        if (useBf16 && !new File(dir, DownloadService.LM_BF16).exists()) {
-            Toast.makeText(this, "Download BF16 LM first", Toast.LENGTH_LONG).show();
-            return;
-        }
-        i.putExtra(GenerationService.EXTRA_BF16_LM, useBf16);
-        String ditFile = ditFileForSelection();
-        if (!new File(dir, ditFile).exists()) {
-            Toast.makeText(this, "Missing " + ditFile + " — download it in Models", Toast.LENGTH_LONG).show();
-            return;
-        }
-        i.putExtra(GenerationService.EXTRA_DIT_FILE, ditFile);
         try {
             String bt = editBpm.getText().toString().trim();
             if (!bt.isEmpty()) i.putExtra(GenerationService.EXTRA_BPM, Integer.parseInt(bt));
@@ -727,8 +504,6 @@ public class MainActivity extends AppCompatActivity {
             String tt = editTimesig.getText().toString().trim();
             if (!tt.isEmpty()) i.putExtra(GenerationService.EXTRA_TIMESIG, Integer.parseInt(tt));
         } catch (NumberFormatException ignored) { }
-        getSharedPreferences(PREFS_AB, MODE_PRIVATE).edit()
-                .putBoolean(PREF_KEEP_CAPTION, switchKeepCaption.isChecked()).apply();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(i);
         else startService(i);
         btnGenerate.setEnabled(false);

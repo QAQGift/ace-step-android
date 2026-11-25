@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_name">ACE-Step</string>
+    <string name="nav_drawer_open">Open menu</string>
+    <string name="nav_drawer_close">Close menu</string>
+    <string name="title_compose">创作 Compose</string>
+    <string name="title_models">模型 Models</string>
+    <string name="title_history">历史 History</string>
+    <string name="hint_caption">Describe instruments AND vocals consistently (e.g. energetic rock with clear male vocal, guitar riffs and drums)</string>
+    <string name="default_caption">energetic mandarin rock, clear male vocal, electric guitar riffs, punchy drums, tight bass, bright crisp production</string>
+    <string name="hint_lyrics">歌词留空=纯器乐；填 [verse] 歌词则出人声（不要加 [Instrumental] 前缀）</string>
+    <string name="hint_models">Model directory (e.g. /sdcard/Download/ace-models)</string>
+    <string name="btn_generate">Generate</string>
+    <string name="status_idle">Ready</string>
+
+    <string-array name="caption_presets">
+        <item>0 · Current (baseline)</item>
+        <item>1 · Bright vocal, light bass</item>
+        <item>2 · Female vocal (dodge register)</item>
+        <item>3 · Pop rock, no bass words</item>
+        <item>4 · Acoustic, no drums</item>
+        <item>5 · REPLICATE normal sample</item>
+    </string-array>
+    <string-array name="caption_preset_values">
+        <item>energetic mandarin rock, clear male vocal, electric guitar riffs, punchy drums, tight bass, bright crisp production</item>
+        <item>upbeat mandarin pop rock, bright clear male vocal in high register, energetic singing, crisper electric guitar, crisp snare and bright cymbals, light bass, airy polished production, no lo-fi</item>
+        <item>energetic mandarin pop, bright clear female vocal, high register singing, electric guitar, crisp drums, light bass, polished production, no lo-fi</item>
+        <item>driving mandarin pop rock, expressive male vocal, electric guitar chords, bright drums, piano accents, clean production, no heavy bass</item>
+        <item>warm mandarin acoustic pop, clear male vocal, acoustic guitar, light brushed drums, strings, bright airy mix, no bass guitar</item>
+        <item>Female-fronted alternative rock / hard rock with intense emotional delivery; powerful high-mid range female vocals (raw, gritty, dynamic - from whispered defiance to full-throated scream), lyrics about resistance, female empowerment, and societal rebellion; instrumentation: distorted electric guitars with heavy palm-muted riffs and soaring leads, thunderous live drums (aggressive snare, crashing cymbals), driving bassline, occasional synth texture for tension; structure: quiet-loud dynamics, explosive chorus, bridge with spoken-word buildup into final climax; mood: urgent, cathartic, defiant, cinematic; tempo: 95-110 BPM; production: modern, punchy mix with analog warmth, slight tape saturation, vocal reverb only in choruses; reference vibe: early Paramore meets Alanis Morissette with hints of Japanese all-female rock bands like BAND-MAID.</item>
+    </string-array>
+</resources>

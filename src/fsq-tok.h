@@ -67,7 +67,7 @@ static bool tok_ggml_load(TokGGML * m, const char * gguf_path) {
     BackendPair bp    = backend_init("Tokenizer");
     m->backend        = bp.backend;
     m->cpu_backend    = bp.cpu_backend;
-    m->use_flash_attn = bp.has_gpu;
+    m->use_flash_attn = bp.has_gpu || backend_use_flash_attn();
 
     // Same Qwen3 config as detokenizer (2 layers, H=2048)
     m->cfg.n_layers          = 2;

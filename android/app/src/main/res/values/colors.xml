@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#FFF4F6FB</color>
+    <color name="card">#FFFFFFFF</color>
+    <color name="primary">#FF5B4FC4</color>
+    <color name="primary_dark">#FF4034A0</color>
+    <color name="accent">#FF00BFA5</color>
+    <color name="text_primary">#FF1A1C29</color>
+    <color name="text_secondary">#FF6B7080</color>
+    <color name="divider">#FFE8EAF2</color>
+    <color name="success">#FF1B8A5A</color>
+    <color name="success_bg">#FFE3F6ED</color>
+    <color name="failed">#FFC5372B</color>
+    <color name="failed_bg">#FFFDE9E7</color>
+    <color name="chip_bg">#FFF0EDFB</color>
+    <color name="progress_track">#FFE3E0F5</color>
+</resources>

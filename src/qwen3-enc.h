@@ -322,7 +322,7 @@ static bool qwen3_load_text_encoder(Qwen3GGML * m, const char * gguf_path) {
     m->backend        = bp.backend;
     m->cpu_backend    = bp.cpu_backend;
     m->sched          = backend_sched_new(bp, 4096);
-    m->use_flash_attn = bp.has_gpu;
+    m->use_flash_attn = bp.has_gpu || backend_use_flash_attn();
 
     m->cfg = {
         /*hidden_size*/ 1024,

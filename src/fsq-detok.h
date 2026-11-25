@@ -72,7 +72,7 @@ static bool detok_ggml_load(DetokGGML * m, const char * gguf_path) {
     BackendPair bp    = backend_init("Detokenizer");
     m->backend        = bp.backend;
     m->cpu_backend    = bp.cpu_backend;
-    m->use_flash_attn = bp.has_gpu;
+    m->use_flash_attn = bp.has_gpu || backend_use_flash_attn();
 
     GGUFModel gf;
     if (!gf_load(&gf, gguf_path)) {

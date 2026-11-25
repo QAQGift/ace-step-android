@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="22dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Generation details"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:paddingBottom="14dp" />
+
+        <!-- Time -->
+        <TextView style="@style/FieldLabel" android:text="Created" />
+        <TextView
+            android:id="@+id/dTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="@color/text_primary"
+            android:paddingBottom="10dp" />
+
+        <!-- Timing grid -->
+        <TextView style="@style/FieldLabel" android:text="Timing" />
+        <TextView
+            android:id="@+id/dTiming"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="@color/text_primary"
+            android:paddingBottom="10dp" />
+
+        <!-- Prompt -->
+        <TextView style="@style/FieldLabel" android:text="Prompt (style)" />
+        <TextView
+            android:id="@+id/dCaption"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="@color/text_primary"
+            android:background="@color/chip_bg"
+            android:padding="10dp"
+            android:paddingBottom="10dp" />
+
+        <!-- Planner output (diagnostics) -->
+        <TextView style="@style/FieldLabel" android:text="Planner output" android:paddingTop="10dp" />
+        <TextView
+            android:id="@+id/dPlanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:background="@color/chip_bg"
+            android:padding="10dp" />
+
+        <!-- Lyrics -->
+        <TextView style="@style/FieldLabel" android:text="Lyrics" android:paddingTop="10dp" />
+        <TextView
+            android:id="@+id/dLyrics"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="@color/text_primary"
+            android:background="@color/chip_bg"
+            android:padding="10dp" />
+
+        <!-- Output path -->
+        <TextView style="@style/FieldLabel" android:text="Output file" android:paddingTop="10dp" />
+        <TextView
+            android:id="@+id/dPath"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:textIsSelectable="true" />
+
+        <!-- Error (only when failed) -->
+        <TextView
+            android:id="@+id/dErrorTitle"
+            style="@style/FieldLabel"
+            android:text="Error"
+            android:paddingTop="10dp"
+            android:visibility="gone" />
+        <TextView
+            android:id="@+id/dError"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textColor="@color/failed"
+            android:visibility="gone" />
+    </LinearLayout>
+</ScrollView>

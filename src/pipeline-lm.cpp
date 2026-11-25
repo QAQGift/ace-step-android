@@ -303,6 +303,16 @@ static std::vector<std::string> run_phase2_batch(Qwen3LM *                      
     int  V       = m->cfg.vocab_size;
     bool use_cfg = cfg_scale > 1.0f;
 
+    // Hard长度上限：5Hz code = 每个 code 0.2 秒。模型（尤其量化版）偶尔
+    // 不输出 EOS，会一直生成到 max_tokens，导致 30s 请求变成 38s+ 音频，
+    // 听感就是「人声慢速、低沉」。按请求的 duration 强制截断 codes 数量。
+    int target_codes = 0;
+    if (!aces.empty() && aces[0].duration > 0) {
+        target_codes = (int) (aces[0].duration * 5.0f + 0.5f);
+    }
+    fprintf(stderr, "[LM-Phase2] target_codes=%d (duration=%.1fs)\n",
+            target_codes, aces.empty() ? 0.0f : aces[0].duration);
+
     // Build per-element prompts
     std::vector<std::vector<int>> prompts(N), unconds(N);
     int                           max_tokens = 0;
@@ -530,6 +540,12 @@ static std::vector<std::string> run_phase2_batch(Qwen3LM *                      
                 seqs[orig_i].done = true;
             } else {
                 seqs[orig_i].audio_codes.push_back(tok - AUDIO_CODE_BASE);
+                // 到达目标长度即停止，不再依赖模型输出 EOS。
+                if (target_codes > 0 && (int) seqs[orig_i].audio_codes.size() >= target_codes) {
+                    seqs[orig_i].done = true;
+                    fprintf(stderr, "[LM-Phase2] seq%d reached target %d codes at step %d\n",
+                            orig_i, target_codes, step + 1);
+                }
             }
         }
 

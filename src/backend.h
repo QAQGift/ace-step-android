@@ -22,12 +22,29 @@ struct BackendPair {
 static BackendPair g_backend_cache = {};
 static int         g_backend_refs  = 0;
 
-// Physical core count heuristic (logical / 2 for HT/SMT).
-// Used for GGML CPU thread count: GEMM shares SIMD units across hyperthreads,
-// so one thread per physical core is optimal.
+// CPU thread count for GGML compute.
+// The old heuristic (logical/2) was written for x86 hyperthreads, where two
+// logical cores share one physical core's SIMD units. Snapdragon 8 Elite has
+// 8 physical cores with NO SMT, so dividing by 2 wasted half the compute.
+// Reserve 2 cores for the system/UI/GPU driver and give the rest to GGML
+// (6 threads on 8-core), which also avoids the perf regression seen when all
+// 8 heterogeneous cores (2x4.32GHz + 6x3.53GHz) are mixed in one thread pool.
 static int backend_cpu_n_threads(void) {
-    int n = (int) std::thread::hardware_concurrency() / 2;
+    int n = (int) std::thread::hardware_concurrency();
+    if (n > 2) n -= 2;          // reserve 2 cores for system + driver
     return n > 0 ? n : 1;
+}
+
+// Flash attention on the CPU backend.
+// The graph builder already casts K/V to F16 and sets F32 accumulation before
+// ggml_flash_attn_ext, and GGML's CPU backend ships a native implementation
+// (ggml-cpu/ops.cpp), so enabling it on CPU is safe. The old code tied this to
+// has_gpu, forcing the slower F32 manual attention path even on CPU builds.
+// Override with env ACESTEP_CPU_FLASH_ATTN=0 for A/B comparison / rollback.
+static bool backend_use_flash_attn(void) {
+    const char * env = std::getenv("ACESTEP_CPU_FLASH_ATTN");
+    if (env && (strcmp(env, "0") == 0 || strcmp(env, "false") == 0)) return false;
+    return true;
 }
 
 // Standalone CPU backend via Registry API (DL-safe, no ggml-cpu.h needed).

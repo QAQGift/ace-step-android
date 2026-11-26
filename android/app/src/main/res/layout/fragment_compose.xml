@@ -74,6 +74,7 @@
                         android:id="@+id/editDuration"
                         android:layout_width="80dp"
                         android:layout_height="wrap_content"
+                        android:hint="seconds"
                         android:text="30"
                         android:inputType="number"
                         android:textSize="14sp"
@@ -99,7 +100,7 @@
                         android:id="@+id/editSeed"
                         android:layout_width="120dp"
                         android:layout_height="wrap_content"
-                        android:text="20"
+                        android:text="-1"
                         android:inputType="numberSigned"
                         android:textSize="14sp"
                         android:background="@color/chip_bg"
@@ -112,7 +113,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="Music metadata (blank = auto)"
+                    android:text="Music metadata（默认 30 秒 / 120 BPM / 4/4；0 = auto）"
                     android:textSize="12sp"
                     android:textColor="@color/primary" />
 
@@ -133,9 +134,9 @@
                         android:id="@+id/editBpm"
                         android:layout_width="90dp"
                         android:layout_height="wrap_content"
-                        android:hint="auto"
+                        android:hint="120"
                         android:inputType="number"
-                        android:text="190"
+                        android:text="120"
                         android:textSize="14sp"
                         android:background="@color/chip_bg"
                         android:padding="8dp"
@@ -155,16 +156,12 @@
                         android:text="Key / scale"
                         android:textSize="13sp"
                         android:textColor="@color/text_secondary" />
-                    <EditText
-                        android:id="@+id/editKey"
+                    <Spinner
+                        android:id="@+id/spinnerKey"
                         android:layout_width="150dp"
                         android:layout_height="wrap_content"
-                        android:hint="auto"
-                        android:text="E minor"
-                        android:textSize="14sp"
                         android:background="@color/chip_bg"
-                        android:padding="8dp"
-                        android:gravity="center" />
+                        android:entries="@array/key_scale_labels" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -180,17 +177,12 @@
                         android:text="Time signature"
                         android:textSize="13sp"
                         android:textColor="@color/text_secondary" />
-                    <EditText
-                        android:id="@+id/editTimesig"
-                        android:layout_width="90dp"
+                    <Spinner
+                        android:id="@+id/spinnerTimesig"
+                        android:layout_width="110dp"
                         android:layout_height="wrap_content"
-                        android:hint="auto"
-                        android:inputType="number"
-                        android:text="4"
-                        android:textSize="14sp"
                         android:background="@color/chip_bg"
-                        android:padding="8dp"
-                        android:gravity="center" />
+                        android:entries="@array/timesig_labels" />
                 </LinearLayout>
 
                 <Button
@@ -202,6 +194,185 @@
                     android:textStyle="bold"
                     android:layout_marginTop="16dp"
                     android:backgroundTint="@color/primary" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Card: Model selection (switch between downloaded variants) -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:strokeColor="@color/divider"
+            app:strokeWidth="1dp"
+            app:contentPadding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView style="@style/SectionTitle" android:text="模型选择 Models" />
+
+                <TextView style="@style/FieldLabel" android:text="DiT（去噪 · 主要影响速度/音质）" android:layout_marginTop="12dp" />
+                <Spinner
+                    android:id="@+id/spinnerDit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/dit_model_labels" />
+
+                <TextView style="@style/FieldLabel" android:text="LM（规划 · 0.6B 最快）" android:layout_marginTop="12dp" />
+                <Spinner
+                    android:id="@+id/spinnerLm"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/lm_model_labels" />
+
+                <TextView style="@style/FieldLabel" android:text="Text encoder" android:layout_marginTop="12dp" />
+                <Spinner
+                    android:id="@+id/spinnerTextEnc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/textenc_model_labels" />
+
+                <TextView style="@style/FieldLabel" android:text="VAE decoder" android:layout_marginTop="12dp" />
+                <Spinner
+                    android:id="@+id/spinnerVae"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/vae_model_labels" />
+
+                <TextView
+                    style="@style/FieldLabel"
+                    android:layout_marginTop="8dp"
+                    android:text="修改后：切换到未下载的模型会失败。请先在「模型」页下载对应 GGUF；Q4/Q5/Q6 会改变音质。" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Card: Generation parameters (content/sampling). Performance tuning stays in Settings. -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:strokeColor="@color/divider"
+            app:strokeWidth="1dp"
+            app:contentPadding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView style="@style/SectionTitle" android:text="生成参数 Generation" />
+                <TextView
+                    style="@style/FieldLabel"
+                    android:layout_marginTop="4dp"
+                    android:text="这里只控制生成内容与采样；输出格式、VAE tile、KV、线程、缓存与 FlashAttention 仍在「设置」页。" />
+
+                <TextView style="@style/FieldLabel" android:text="演唱语言 Vocal language" android:layout_marginTop="12dp" />
+                <Spinner
+                    android:id="@+id/spinnerVocalLanguage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/vocal_language_labels" />
+                <TextView style="@style/FieldLabel" android:text="auto 会读取歌词里的 [zh]/[en] 标签；纯器乐会被 native 强制为 unknown。" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchCaptionLock"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:checked="false"
+                    android:text="保留原始 Prompt（不让 LM 扩写）"
+                    android:textSize="14sp" />
+                <TextView style="@style/FieldLabel" android:text="官方默认关闭（use_cot_caption=true，LM 扩写 caption）；勾选会锁定原 Prompt，改变音色/结构，复现时请保持一致。" />
+
+                <TextView style="@style/FieldLabel" android:text="LM temperature" android:layout_marginTop="12dp" />
+                <Spinner
+                    android:id="@+id/spinnerLmTemp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/lm_temperature_labels" />
+
+                <TextView style="@style/FieldLabel" android:text="LM top_p" android:layout_marginTop="8dp" />
+                <Spinner
+                    android:id="@+id/spinnerLmTopP"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/lm_top_p_labels" />
+
+                <TextView style="@style/FieldLabel" android:text="LM top_k" android:layout_marginTop="8dp" />
+                <Spinner
+                    android:id="@+id/spinnerLmTopK"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/lm_top_k_labels" />
+
+                <TextView style="@style/FieldLabel" android:text="LM CFG scale" android:layout_marginTop="8dp" />
+                <Spinner
+                    android:id="@+id/spinnerLmCfg"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/lm_cfg_labels" />
+                <TextView style="@style/FieldLabel" android:text="歌词/元数据扩写阶段 native 会强制 CFG=1；此挡位主要影响 audio codes 阶段。" />
+
+                <TextView style="@style/FieldLabel" android:text="LM negative prompt（可留空）" android:layout_marginTop="12dp" />
+                <EditText
+                    android:id="@+id/editLmNegative"
+                    android:layout_width="match_parent"
+                    android:layout_height="64dp"
+                    android:gravity="top"
+                    android:hint="例如：slow tempo, low pitch, muddy bass"
+                    android:textSize="14sp"
+                    android:background="@color/chip_bg"
+                    android:padding="10dp"
+                    android:importantForAutofill="no" />
+
+                <TextView style="@style/FieldLabel" android:text="Inference steps" android:layout_marginTop="12dp" />
+                <Spinner
+                    android:id="@+id/spinnerInferenceSteps"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/inference_steps_labels" />
+
+                <TextView style="@style/FieldLabel" android:text="Guidance scale" android:layout_marginTop="8dp" />
+                <Spinner
+                    android:id="@+id/spinnerGuidance"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/guidance_labels" />
+                <TextView style="@style/FieldLabel" android:text="turbo 已内化 guidance，超过 1.0 会触发 native 警告，通常保持 auto/1.0。" />
+
+                <TextView style="@style/FieldLabel" android:text="Shift" android:layout_marginTop="8dp" />
+                <Spinner
+                    android:id="@+id/spinnerShift"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/shift_labels" />
+
+                <TextView style="@style/FieldLabel" android:text="Solver" android:layout_marginTop="8dp" />
+                <Spinner
+                    android:id="@+id/spinnerSolver"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/solver_labels" />
+                <TextView style="@style/FieldLabel" android:text="改动会写入 manifest 的 generation 段与 ADB 复现命令；每项都会在下次生成时生效。" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -222,13 +393,30 @@
 
                 <TextView style="@style/SectionTitle" android:text="状态 Status" />
 
-                <ProgressBar
-                    android:id="@+id/progress"
-                    style="?android:attr/progressBarStyleHorizontal"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:max="100"
-                    android:layout_marginTop="12dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="12dp">
+                    <ProgressBar
+                        android:id="@+id/progress"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:max="1000" />
+                    <TextView
+                        android:id="@+id/textElapsed"
+                        android:layout_width="72dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="00:00"
+                        android:textSize="13sp"
+                        android:textColor="@color/primary"
+                        android:gravity="end"
+                        android:fontFamily="monospace" />
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/textStatus"

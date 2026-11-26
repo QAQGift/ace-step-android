@@ -85,6 +85,7 @@ struct ModelKey {
 enum EvictPolicy {
     EVICT_STRICT,  // default: at most one GPU module resident at a time
     EVICT_NEVER,   // --keep-loaded: never evict, accumulate
+    EVICT_TIERED,  // mobile: keep a budgeted working set across requests
 };
 
 // DiT metadata cached on the CPU: needed by text encoding and T resolution
@@ -98,6 +99,12 @@ struct DiTMeta {
 
 ModelStore * store_create(EvictPolicy policy);
 void         store_free(ModelStore * s);
+
+// Reconfigure an existing store at runtime. Used by the Android bridge to
+// switch between the validated STRICT policy and a budgeted tiered cache
+// without recreating the engine. budget_bytes=0 means no explicit cap.
+void store_configure(ModelStore * s, EvictPolicy policy, size_t budget_bytes);
+size_t store_budget_bytes(const ModelStore * s);
 
 // Typed GPU module accessors. Each returns a pointer owned by the store;
 // never free it yourself. Returns NULL on load failure.

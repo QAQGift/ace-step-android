@@ -89,7 +89,8 @@ struct CpuEntry {
 }  // namespace
 
 struct ModelStore {
-    EvictPolicy policy;
+    EvictPolicy policy = EVICT_STRICT;
+    size_t      budget_bytes = 0;
 
     std::unordered_map<ModelKey, GpuEntry, ModelKeyHash, ModelKeyEq> gpu;
     HandleMap                                                        handle_to_key;
@@ -128,6 +129,87 @@ static void evict_all_except(ModelStore * s, const ModelKey & keep) {
     }
 }
 
+// Conservative estimates used only by the TIERED budgeter. They intentionally
+// round up so we never admit a working set that the device cannot hold. The
+// real bytes are recorded on each installed entry and used for the running
+// total after load.
+static size_t estimate_bytes(const ModelKey & k) {
+    const size_t MB = 1024 * 1024;
+    switch (k.kind) {
+        case MODEL_LM:       return 3800 * MB;  // 1.98 GB weights + ~1.75 GB KV
+        case MODEL_TEXT_ENC: return  800 * MB;
+        case MODEL_COND_ENC: return  120 * MB;
+        case MODEL_DIT:      return 2600 * MB;
+        case MODEL_VAE_ENC:  return  400 * MB;
+        case MODEL_VAE_DEC:  return  400 * MB;
+        case MODEL_FSQ_TOK:  return  120 * MB;
+        case MODEL_FSQ_DETOK:return  120 * MB;
+    }
+    return 256 * MB;
+}
+
+// Higher priority means "keep longer" when the tiered budget is tight.
+// Small, reusable modules win; the large LM is the first thing to go when
+// the device cannot hold the full working set.
+static int keep_priority(const ModelKey & k) {
+    switch (k.kind) {
+        case MODEL_TEXT_ENC:  return 80;
+        case MODEL_VAE_DEC:   return 75;
+        case MODEL_FSQ_TOK:   return 70;
+        case MODEL_FSQ_DETOK: return 70;
+        case MODEL_COND_ENC:  return 60;
+        case MODEL_DIT:       return 50;
+        case MODEL_LM:        return 40;
+        case MODEL_VAE_ENC:   return 20;
+    }
+    return 30;
+}
+
+// Caller holds s->mtx. Called on a cache miss before loading a new module.
+// Evicts idle entries from the lowest priority upward until the predicted
+// resident set fits the configured budget. A module still in use (refcount>0)
+// is never evicted; if the budget cannot be met we log and proceed rather
+// than abort, matching the mobile requirement to stay alive under pressure.
+static void evict_for_budget(ModelStore * s, const ModelKey & keep, size_t needed) {
+    if (s->budget_bytes == 0) {
+        return;
+    }
+    size_t current = 0;
+    for (const auto & kv : s->gpu) current += kv.second.bytes;
+
+    ModelKeyEq eq;
+    while (current + needed > s->budget_bytes) {
+        auto victim = s->gpu.end();
+        int  victim_priority = 0;
+        for (auto it = s->gpu.begin(); it != s->gpu.end(); ++it) {
+            if (eq(it->first, keep)) continue;
+            const GpuEntry & e = it->second;
+            if (e.refcount > 0) continue;
+            int p = keep_priority(it->first);
+            if (victim == s->gpu.end() || p < victim_priority) {
+                victim = it;
+                victim_priority = p;
+            }
+        }
+        if (victim == s->gpu.end()) break;
+
+        GpuEntry & e = victim->second;
+        fprintf(stderr, "[Store] Tiered evict %s (%.1f MB, priority %d)\n", e.label,
+                (float) e.bytes / (1024.0f * 1024.0f), victim_priority);
+        s->handle_to_key.erase(e.ptr);
+        e.deleter(e.ptr);
+        current -= e.bytes;
+        s->gpu.erase(victim);
+    }
+
+    if (current + needed > s->budget_bytes) {
+        fprintf(stderr,
+                "[Store] Tiered budget exceeded: need %.1f MB more (budget %.1f MB)\n",
+                (float) (current + needed - s->budget_bytes) / (1024.0f * 1024.0f),
+                (float) s->budget_bytes / (1024.0f * 1024.0f));
+    }
+}
+
 namespace {
 
 template <typename T>
@@ -162,8 +244,25 @@ template <typename T> static T * cache_hit(ModelStore * s, const ModelKey & k) {
 ModelStore * store_create(EvictPolicy policy) {
     auto * s  = new ModelStore();
     s->policy = policy;
-    fprintf(stderr, "[Store] Created (policy=%s)\n", policy == EVICT_STRICT ? "STRICT" : "NEVER");
+    const char * name = policy == EVICT_STRICT ? "STRICT"
+                      : policy == EVICT_NEVER  ? "NEVER" : "TIERED";
+    fprintf(stderr, "[Store] Created (policy=%s)\n", name);
     return s;
+}
+
+void store_configure(ModelStore * s, EvictPolicy policy, size_t budget_bytes) {
+    if (!s) return;
+    std::lock_guard<std::mutex> lock(s->mtx);
+    s->policy       = policy;
+    s->budget_bytes = budget_bytes;
+    const char * name = policy == EVICT_STRICT ? "STRICT"
+                      : policy == EVICT_NEVER  ? "NEVER" : "TIERED";
+    fprintf(stderr, "[Store] Reconfigured (policy=%s, budget=%.1f MB)\n", name,
+            (float) budget_bytes / (1024.0f * 1024.0f));
+}
+
+size_t store_budget_bytes(const ModelStore * s) {
+    return s ? s->budget_bytes : 0;
 }
 
 void store_free(ModelStore * s) {
@@ -280,6 +379,8 @@ Qwen3LM * store_require_lm(ModelStore * s, const ModelKey & k) {
     }
     if (s->policy == EVICT_STRICT) {
         evict_all_except(s, k);
+    } else if (s->policy == EVICT_TIERED) {
+        evict_for_budget(s, k, estimate_bytes(k));
     }
     Timer     t;
     Qwen3LM * m = new Qwen3LM();
@@ -299,6 +400,8 @@ Qwen3GGML * store_require_text_enc(ModelStore * s, const ModelKey & k) {
     }
     if (s->policy == EVICT_STRICT) {
         evict_all_except(s, k);
+    } else if (s->policy == EVICT_TIERED) {
+        evict_for_budget(s, k, estimate_bytes(k));
     }
     Timer       t;
     Qwen3GGML * m = new Qwen3GGML();
@@ -318,6 +421,8 @@ CondGGML * store_require_cond_enc(ModelStore * s, const ModelKey & k) {
     }
     if (s->policy == EVICT_STRICT) {
         evict_all_except(s, k);
+    } else if (s->policy == EVICT_TIERED) {
+        evict_for_budget(s, k, estimate_bytes(k));
     }
     Timer      t;
     CondGGML * m = new CondGGML();
@@ -337,6 +442,8 @@ DiTGGML * store_require_dit(ModelStore * s, const ModelKey & k) {
     }
     if (s->policy == EVICT_STRICT) {
         evict_all_except(s, k);
+    } else if (s->policy == EVICT_TIERED) {
+        evict_for_budget(s, k, estimate_bytes(k));
     }
     Timer        t;
     DiTGGML *    m       = new DiTGGML();
@@ -357,6 +464,8 @@ VAEEncoder * store_require_vae_enc(ModelStore * s, const ModelKey & k) {
     }
     if (s->policy == EVICT_STRICT) {
         evict_all_except(s, k);
+    } else if (s->policy == EVICT_TIERED) {
+        evict_for_budget(s, k, estimate_bytes(k));
     }
     Timer        t;
     VAEEncoder * m = new VAEEncoder();
@@ -373,6 +482,8 @@ VAEGGML * store_require_vae_dec(ModelStore * s, const ModelKey & k) {
     }
     if (s->policy == EVICT_STRICT) {
         evict_all_except(s, k);
+    } else if (s->policy == EVICT_TIERED) {
+        evict_for_budget(s, k, estimate_bytes(k));
     }
     Timer     t;
     VAEGGML * m = new VAEGGML();
@@ -389,6 +500,8 @@ TokGGML * store_require_fsq_tok(ModelStore * s, const ModelKey & k) {
     }
     if (s->policy == EVICT_STRICT) {
         evict_all_except(s, k);
+    } else if (s->policy == EVICT_TIERED) {
+        evict_for_budget(s, k, estimate_bytes(k));
     }
     Timer     t;
     TokGGML * m = new TokGGML();
@@ -408,6 +521,8 @@ DetokGGML * store_require_fsq_detok(ModelStore * s, const ModelKey & k) {
     }
     if (s->policy == EVICT_STRICT) {
         evict_all_except(s, k);
+    } else if (s->policy == EVICT_TIERED) {
+        evict_for_budget(s, k, estimate_bytes(k));
     }
     Timer       t;
     DetokGGML * m = new DetokGGML();

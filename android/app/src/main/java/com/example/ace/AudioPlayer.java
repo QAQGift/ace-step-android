@@ -31,9 +31,12 @@ public class AudioPlayer {
 
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
-            if (destroyed || player == null) return;
+            if (destroyed) return;
+            // Keep rescheduling even before a file is loaded: the previous
+            // version returned early when player == null, which killed the
+            // ticker permanently after bind() and froze the seek bar forever.
             try {
-                if (player.isPlaying() && seekBar != null && !userSeeking) {
+                if (player != null && player.isPlaying() && seekBar != null && !userSeeking) {
                     int pos = player.getCurrentPosition();
                     int dur = player.getDuration();
                     seekBar.setMax(dur > 0 ? dur : 1);

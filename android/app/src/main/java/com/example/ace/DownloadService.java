@@ -32,6 +32,9 @@ public class DownloadService extends Service {
     public static final String ACTION_START = "com.example.ace.DOWNLOAD_START";
     public static final String ACTION_CANCEL = "com.example.ace.DOWNLOAD_CANCEL";
     public static final String EXTRA_DIR = "dir";
+    // Optional: name of a single extra model to download (e.g. DiT Q4_K_M).
+    // When absent, the 4 base models are downloaded.
+    public static final String EXTRA_SINGLE_FILE = "single_file";
 
     public static final String BROADCAST_PROGRESS = "com.example.ace.DL_PROGRESS";
     public static final String BROADCAST_DONE = "com.example.ace.DL_DONE";
@@ -54,6 +57,21 @@ public class DownloadService extends Service {
             784144960L,
             1975837568L,
             2549528000L
+    };
+
+    // Official optional quantizations from Serveurperso/ACE-Step-1.5-GGUF.
+    // Exact byte sizes from the repository file listing.
+    private static final String[] OPTIONAL_FILES = {
+            "acestep-v15-turbo-Q4_K_M.gguf",   // 1.4 GB
+            "acestep-v15-turbo-Q5_K_M.gguf",   // 1.6 GB
+            "acestep-v15-turbo-Q6_K.gguf",     // 1.9 GB
+            "acestep-5Hz-lm-0.6B-Q8_0.gguf"    // 0.7 GB
+    };
+    private static final long[] OPTIONAL_SIZES = {
+            1445710272L,
+            1700140224L,
+            1970472064L,
+            709846656L
     };
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -79,11 +97,49 @@ public class DownloadService extends Service {
 
         final String dir = intent.getStringExtra(EXTRA_DIR);
         if (dir == null) return START_NOT_STICKY;
+        final String singleFile = intent.getStringExtra(EXTRA_SINGLE_FILE);
 
         cancelled = false;
         startForeground(2, buildNotification("Preparing download...", 0));
-        executor.execute(() -> downloadAll(dir));
+        if (singleFile != null && !singleFile.isEmpty()) {
+            executor.execute(() -> downloadSingle(dir, singleFile));
+        } else {
+            executor.execute(() -> downloadAll(dir));
+        }
         return START_NOT_STICKY;
+    }
+
+    /** Download one optional GGUF, reusing the same validated transfer path. */
+    private void downloadSingle(String dir, String name) {
+        File dirFile = new File(dir);
+        if (!dirFile.exists() && !dirFile.mkdirs()) {
+            broadcastError("Cannot create directory: " + dir);
+            finish();
+            return;
+        }
+        long expected = -1;
+        for (int i = 0; i < OPTIONAL_FILES.length; i++) {
+            if (OPTIONAL_FILES[i].equals(name)) { expected = OPTIONAL_SIZES[i]; break; }
+        }
+        if (expected < 0) {
+            broadcastError("Unknown model file: " + name);
+            finish();
+            return;
+        }
+        File target = new File(dirFile, name);
+        if (target.exists() && target.length() == expected) {
+            broadcastProgress(0, name, 100, "Already downloaded: " + name);
+        } else if (!downloadFile(name, target, expected, 0)) {
+            if (!cancelled) broadcastError("Failed to download " + name + ". Check logcat.");
+            finish();
+            return;
+        }
+        if (!cancelled) {
+            Intent done = new Intent(BROADCAST_DONE);
+            done.putExtra(EXTRA_SINGLE_FILE, name);
+            LocalBroadcastManager.getInstance(this).sendBroadcast(done);
+        }
+        finish();
     }
 
     private void downloadAll(String dir) {

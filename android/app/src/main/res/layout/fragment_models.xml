@@ -72,6 +72,57 @@
                     android:layout_height="wrap_content"
                     android:max="100"
                     android:layout_marginTop="10dp" />
+
+                <TextView
+                    style="@style/FieldLabel"
+                    android:layout_marginTop="14dp"
+                    android:text="可选量化 DiT（下载后在「创作」页切换）" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="6dp">
+                    <Button
+                        android:id="@+id/btnDownloadQ4"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:text="DiT Q4_K_M" />
+                    <Button
+                        android:id="@+id/btnDownloadQ5"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:text="DiT Q5_K_M" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="6dp">
+                    <Button
+                        android:id="@+id/btnDownloadQ6"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:text="DiT Q6_K" />
+                    <Button
+                        android:id="@+id/btnDownloadLm06"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:text="LM 0.6B Q8" />
+                </LinearLayout>
+                <TextView
+                    style="@style/FieldLabel"
+                    android:layout_marginTop="6dp"
+                    android:text="Q4≈1.4GB / Q5≈1.6GB / Q6≈1.9GB / LM0.6B≈0.7GB。仅从 hf-mirror 官方仓库下载。" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

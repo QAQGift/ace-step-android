@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@color/bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:paddingBottom="32dp">
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:strokeColor="@color/divider"
+            app:strokeWidth="1dp"
+            app:contentPadding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView style="@style/SectionTitle" android:text="输出与性能 Output &amp; Performance" />
+
+                <!--
+                  Output audio format. Native audio-io.h supports wav16/wav24/wav32/mp3.
+                  MP3 bitrate is fixed at 192 kbps. Changing format only affects the
+                  container/bit depth, not the model or the generation itself.
+                -->
+                <TextView style="@style/FieldLabel" android:text="Output format" android:layout_marginTop="12dp" />
+                <Spinner
+                    android:id="@+id/spinnerOutputFormat"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/output_format_labels" />
+                <TextView
+                    style="@style/FieldLabel"
+                    android:text="修改后：决定导出文件类型与位深。WAV32 float 体积最大且不归一化；MP3 体积最小（192kbps）。不影响生成速度。" />
+
+                <!--
+                  VAE tile（分块解码），只提供已定义挡位，避免手填异常值。
+                  512/32 = 当前已验证的稳定值；30 秒音频会切 2 块，慢但不容易破音。
+                  640/40 = 折中挡，仍分块但重叠更少。
+                  768/48 / 1024/64 = 30 秒音频走非分块路径，通常更快，但在本机
+                  早期版本曾出现失真。改动后必须重新对比导出 WAV 的高频能量、
+                  左右声道相关性和听感，确认无伪影才能作为默认值。
+                -->
+                <TextView style="@style/FieldLabel" android:text="VAE tile / overlap" android:layout_marginTop="12dp" />
+                <Spinner
+                    android:id="@+id/spinnerVaeTile"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/vae_tile_labels" />
+                <TextView
+                    style="@style/FieldLabel"
+                    android:text="修改后：影响 VAE 解码速度与伪影风险。当前最大耗时就在 VAE，调大 tile 可能明显加速，但必须重新验证音质。" />
+
+                <!--
+                  LM KV cache 容量，只提供离散挡位。
+                  2048 = 实验挡，长提示词会触发 8192 回退重试。
+                  4096 = 当前默认，30 秒生成已跑通，内存比官方 8192 少一半以上。
+                  8192 = 官方上限，结构字段最稳，但 KV 内存翻倍。
+                -->
+                <TextView style="@style/FieldLabel" android:text="LM KV capacity" android:layout_marginTop="16dp" />
+                <Spinner
+                    android:id="@+id/spinnerKvSeq"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/kv_seq_labels" />
+                <TextView
+                    style="@style/FieldLabel"
+                    android:text="修改后：影响 LM 阶段内存与稳定性。降低可省内存，但过小会触发自动回退重试；8192 最稳但更占内存。" />
+
+                <!--
+                  CPU 线程数，只提供离散挡位。
+                  0 = 自动（逻辑核数 - 2）。2/4/6/8 用于 A/B。
+                  Snapdragon 8 Elite 上 6 线程是默认折中；8 线程可能抢系统/GPU 资源，
+                  2/4 线程可能降低发热。VAE 偏访存，线程未必越多越快。
+                -->
+                <TextView style="@style/FieldLabel" android:text="CPU threads" android:layout_marginTop="16dp" />
+                <Spinner
+                    android:id="@+id/spinnerThreads"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/threads_labels" />
+                <TextView
+                    style="@style/FieldLabel"
+                    android:text="修改后：影响 CPU 并行度与发热。需在下次生成前生效；已经创建的 native backend 不会中途改线程数。" />
+
+                <!--
+                  分层缓存预算
+                  Auto 按设备总内存分级；Low=2GB 只留小模型；Medium=5GB 留 DiT/VAE/TextEnc；
+                  High=8GB 尽量留住全部模型。预算越大，第二次生成越快，但低内存设备可能被杀进程。
+                -->
+                <TextView style="@style/FieldLabel" android:text="Model cache tier" android:layout_marginTop="16dp" />
+                <Spinner
+                    android:id="@+id/spinnerCacheTier"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chip_bg"
+                    android:entries="@array/cache_tier_labels" />
+                <TextView
+                    style="@style/FieldLabel"
+                    android:text="修改后：影响跨请求复用与内存占用。高等级减少第二次生成加载时间，但可能增加被系统回收的风险。" />
+
+                <!--
+                  CPU FlashAttention
+                  默认开启。关闭后会走旧版 F32 attention，在 CPU 上明显更慢；
+                  只作为回退选项保留。
+                -->
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchFlashAttn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="CPU FlashAttention"
+                    android:textSize="14sp" />
+                <TextView
+                    style="@style/FieldLabel"
+                    android:text="修改后：关闭会回退到慢速 F32 attention，通常不要关闭；仅用于 A/B 或兼容回退。" />
+
+                <Button
+                    android:id="@+id/btnSaveSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:text="保存设置" />
+
+                <Button
+                    android:id="@+id/btnResetSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="恢复推荐值" />
+
+                <TextView
+                    android:id="@+id/textSettingsStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:textSize="13sp"
+                    android:textColor="@color/text_secondary" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</ScrollView>

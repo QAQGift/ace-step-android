@@ -23,6 +23,8 @@ public class HistoryRecord {
     public String plannerCaption; // caption after LM rewrite
     public String plannerMeta;    // bpm/key/timesig/language from planner
     public int    codesCount;     // number of 5Hz audio codes from LM
+    public String manifestPath;   // sidecar JSON next to the WAV
+    public String manifestJson;   // embedded copy so history survives sidecar deletion
     public boolean bf16Lm;        // planner LM precision used
     public boolean success;
     public String error;
@@ -47,6 +49,8 @@ public class HistoryRecord {
         o.put("plannerCaption", plannerCaption == null ? "" : plannerCaption);
         o.put("plannerMeta", plannerMeta == null ? "" : plannerMeta);
         o.put("codesCount", codesCount);
+        o.put("manifestPath", manifestPath == null ? "" : manifestPath);
+        o.put("manifestJson", manifestJson == null ? "" : manifestJson);
         o.put("bf16Lm", bf16Lm);
         o.put("success", success);
         o.put("error", error == null ? "" : error);
@@ -74,6 +78,8 @@ public class HistoryRecord {
             r.plannerCaption = o.optString("plannerCaption", "");
             r.plannerMeta = o.optString("plannerMeta", "");
             r.codesCount = o.optInt("codesCount", 0);
+            r.manifestPath = o.optString("manifestPath", "");
+            r.manifestJson = o.optString("manifestJson", "");
             r.bf16Lm = o.optBoolean("bf16Lm", false);
             r.success = o.optBoolean("success", true);
             r.error = o.optString("error", "");

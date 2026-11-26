@@ -28,7 +28,7 @@
             android:textColor="@color/text_primary"
             android:paddingBottom="10dp" />
 
-        <!-- Timing grid -->
+        <!-- Timing summary -->
         <TextView style="@style/FieldLabel" android:text="Timing" />
         <TextView
             android:id="@+id/dTiming"
@@ -36,7 +36,17 @@
             android:layout_height="wrap_content"
             android:textSize="14sp"
             android:textColor="@color/text_primary"
-            android:paddingBottom="10dp" />
+            android:paddingBottom="8dp" />
+
+        <!-- Per-step timing table -->
+        <TableLayout
+            android:id="@+id/dStageTable"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:stretchColumns="1"
+            android:background="@color/chip_bg"
+            android:padding="8dp"
+            android:layout_marginBottom="10dp" />
 
         <!-- Prompt -->
         <TextView style="@style/FieldLabel" android:text="Prompt (style)" />
@@ -80,6 +90,37 @@
             android:layout_height="wrap_content"
             android:textSize="12sp"
             android:textColor="@color/text_secondary"
+            android:textIsSelectable="true" />
+
+        <!-- Reproducibility manifest -->
+        <TextView style="@style/FieldLabel" android:text="Reproduce config" android:paddingTop="10dp" />
+        <TextView
+            android:id="@+id/dConfig"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textColor="@color/text_primary"
+            android:background="@color/chip_bg"
+            android:padding="10dp" />
+
+        <TextView style="@style/FieldLabel" android:text="Manifest file" android:paddingTop="10dp" />
+        <TextView
+            android:id="@+id/dManifestPath"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:textIsSelectable="true" />
+
+        <TextView style="@style/FieldLabel" android:text="Full manifest JSON" android:paddingTop="10dp" />
+        <TextView
+            android:id="@+id/dManifestJson"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:textColor="@color/text_secondary"
+            android:background="@color/chip_bg"
+            android:padding="10dp"
             android:textIsSelectable="true" />
 
         <!-- Error (only when failed) -->

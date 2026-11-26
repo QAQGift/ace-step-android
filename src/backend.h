@@ -30,6 +30,17 @@ static int         g_backend_refs  = 0;
 // (6 threads on 8-core), which also avoids the perf regression seen when all
 // 8 heterogeneous cores (2x4.32GHz + 6x3.53GHz) are mixed in one thread pool.
 static int backend_cpu_n_threads(void) {
+    // ACESTEP_CPU_THREADS is a process-wide override set by the Android JNI
+    // bridge before the first backend_init(). Because every translation unit
+    // caches its own BackendPair, an env var is the only reliable way to make
+    // all modules see the same tuning.
+    const char * override = std::getenv("ACESTEP_CPU_THREADS");
+    if (override && override[0]) {
+        int requested = std::atoi(override);
+        if (requested > 0 && requested <= 256) {
+            return requested;
+        }
+    }
     int n = (int) std::thread::hardware_concurrency();
     if (n > 2) n -= 2;          // reserve 2 cores for system + driver
     return n > 0 ? n : 1;

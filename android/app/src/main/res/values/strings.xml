@@ -5,10 +5,274 @@
     <string name="title_compose">创作 Compose</string>
     <string name="title_models">模型 Models</string>
     <string name="title_history">历史 History</string>
+    <string name="title_settings">设置 Settings</string>
     <string name="hint_caption">Describe instruments AND vocals consistently</string>
     <string name="default_caption">Female-fronted alternative rock / hard rock with intense emotional delivery; powerful high-mid range female vocals, distorted electric guitar riffs, thunderous live drums, driving bassline; quiet-loud dynamics, explosive chorus; modern punchy production</string>
     <string name="hint_lyrics">歌词留空=纯器乐；填 [verse] 歌词则出人声（不要加 [Instrumental] 前缀）</string>
     <string name="hint_models">Model directory (e.g. /sdcard/Download/ace-models)</string>
     <string name="btn_generate">Generate</string>
     <string name="status_idle">Ready</string>
+    <string-array name="vae_tile_labels">
+        <item>512 / 32（推荐 稳定）</item>
+        <item>640 / 40（折中）</item>
+        <item>768 / 48（非分块）</item>
+        <item>1024 / 64（官方 待验证）</item>
+    </string-array>
+    <string-array name="kv_seq_labels">
+        <item>2048（实验）</item>
+        <item>4096（推荐）</item>
+        <item>8192（官方 最稳）</item>
+    </string-array>
+    <string-array name="threads_labels">
+        <item>自动（推荐）</item>
+        <item>2 线程</item>
+        <item>4 线程</item>
+        <item>6 线程</item>
+        <item>8 线程</item>
+    </string-array>
+    <string-array name="cache_tier_labels">
+        <item>自动 (Auto)</item>
+        <item>低内存 2GB</item>
+        <item>中内存 5GB</item>
+        <item>高内存 8GB</item>
+    </string-array>
+    <!-- Output audio format. Values come from audio-io.h audio_parse_format(). -->
+    <string-array name="output_format_labels">
+        <item>WAV 16-bit（推荐）</item>
+        <item>WAV 24-bit</item>
+        <item>WAV 32-bit float</item>
+        <item>MP3 192 kbps</item>
+    </string-array>
+    <!-- Musical keys. Empty = let the planner decide from the prompt. -->
+    <string-array name="key_scale_labels">
+        <item>auto（自动判断）</item>
+        <item>C major</item>
+        <item>C minor</item>
+        <item>C# minor</item>
+        <item>D major</item>
+        <item>D minor</item>
+        <item>Eb major</item>
+        <item>E minor</item>
+        <item>F major</item>
+        <item>F minor</item>
+        <item>F# minor</item>
+        <item>G major</item>
+        <item>G minor</item>
+        <item>Ab major</item>
+        <item>A major</item>
+        <item>A minor</item>
+        <item>Bb major</item>
+        <item>B minor</item>
+    </string-array>
+    <!-- Time signature values accepted by metadata-fsm.h: "", 2, 3, 4, 6. -->
+    <string-array name="timesig_labels">
+        <item>auto（自动判断）</item>
+        <item>2/4</item>
+        <item>3/4</item>
+        <item>4/4（常用）</item>
+        <item>6/8</item>
+    </string-array>
+    <string-array name="timesig_values" translatable="false">
+        <item></item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>6</item>
+    </string-array>
+    <!-- DiT model variants. Only files present in the model dir are usable. -->
+    <string-array name="dit_model_labels">
+        <item>turbo Q8_0（默认 · 官方）</item>
+        <item>turbo Q6_K</item>
+        <item>turbo Q5_K_M</item>
+        <item>turbo Q4_K_M</item>
+        <item>base Q8_0</item>
+        <item>sft Q8_0</item>
+    </string-array>
+    <!-- LM planner variants. -->
+    <string-array name="lm_model_labels">
+        <item>1.7B Q8_0（默认）</item>
+        <item>0.6B Q8_0（最快）</item>
+    </string-array>
+    <!-- VAE variants. -->
+    <string-array name="vae_model_labels">
+        <item>BF16（默认）</item>
+    </string-array>
+    <string-array name="textenc_model_labels">
+        <item>0.6B Q8_0（默认）</item>
+        <item>0.6B BF16</item>
+    </string-array>
+    <!-- Parallel value arrays: exact GGUF filenames (index matches the labels). -->
+    <string-array name="output_format_values" translatable="false">
+        <item>wav16</item>
+        <item>wav24</item>
+        <item>wav32</item>
+        <item>mp3</item>
+    </string-array>
+    <string-array name="key_scale_values" translatable="false">
+        <item></item>
+        <item>C major</item>
+        <item>C minor</item>
+        <item>C# minor</item>
+        <item>D major</item>
+        <item>D minor</item>
+        <item>Eb major</item>
+        <item>E minor</item>
+        <item>F major</item>
+        <item>F minor</item>
+        <item>F# minor</item>
+        <item>G major</item>
+        <item>G minor</item>
+        <item>Ab major</item>
+        <item>A major</item>
+        <item>A minor</item>
+        <item>Bb major</item>
+        <item>B minor</item>
+    </string-array>
+    <string-array name="dit_model_values" translatable="false">
+        <item>acestep-v15-turbo-Q8_0.gguf</item>
+        <item>acestep-v15-turbo-Q6_K.gguf</item>
+        <item>acestep-v15-turbo-Q5_K_M.gguf</item>
+        <item>acestep-v15-turbo-Q4_K_M.gguf</item>
+        <item>acestep-v15-base-Q8_0.gguf</item>
+        <item>acestep-v15-sft-Q8_0.gguf</item>
+    </string-array>
+    <string-array name="lm_model_values" translatable="false">
+        <item>acestep-5Hz-lm-1.7B-Q8_0.gguf</item>
+        <item>acestep-5Hz-lm-0.6B-Q8_0.gguf</item>
+    </string-array>
+    <string-array name="vae_model_values" translatable="false">
+        <item>vae-BF16.gguf</item>
+    </string-array>
+    <string-array name="textenc_model_values" translatable="false">
+        <item>Qwen3-Embedding-0.6B-Q8_0.gguf</item>
+        <item>Qwen3-Embedding-0.6B-BF16.gguf</item>
+    </string-array>
+
+    <!-- Generation parameters (compose page). Values are passed into request JSON. -->
+    <string-array name="vocal_language_labels">
+        <item>auto（自动 / 歌词 [zh] 标签）</item>
+        <item>zh（中文）</item>
+        <item>en（英语）</item>
+        <item>ja（日语）</item>
+        <item>ko（韩语）</item>
+        <item>fr（法语）</item>
+        <item>de（德语）</item>
+        <item>es（西班牙语）</item>
+        <item>it（意大利语）</item>
+        <item>pt（葡萄牙语）</item>
+        <item>ru（俄语）</item>
+        <item>th（泰语）</item>
+        <item>vi（越南语）</item>
+        <item>id（印尼语）</item>
+        <item>ar（阿拉伯语）</item>
+        <item>hi（印地语）</item>
+        <item>unknown（未知 / 器乐）</item>
+    </string-array>
+    <string-array name="vocal_language_values" translatable="false">
+        <item></item>
+        <item>zh</item>
+        <item>en</item>
+        <item>ja</item>
+        <item>ko</item>
+        <item>fr</item>
+        <item>de</item>
+        <item>es</item>
+        <item>it</item>
+        <item>pt</item>
+        <item>ru</item>
+        <item>th</item>
+        <item>vi</item>
+        <item>id</item>
+        <item>ar</item>
+        <item>hi</item>
+        <item>unknown</item>
+    </string-array>
+    <string-array name="lm_temperature_labels">
+        <item>0.70（保守）</item>
+        <item>0.85（默认）</item>
+        <item>1.00（更随机）</item>
+    </string-array>
+    <string-array name="lm_temperature_values" translatable="false">
+        <item>0.70</item>
+        <item>0.85</item>
+        <item>1.00</item>
+    </string-array>
+    <string-array name="lm_top_p_labels">
+        <item>0.80（保守）</item>
+        <item>0.90（默认）</item>
+        <item>0.95（更发散）</item>
+    </string-array>
+    <string-array name="lm_top_p_values" translatable="false">
+        <item>0.80</item>
+        <item>0.90</item>
+        <item>0.95</item>
+    </string-array>
+    <string-array name="lm_top_k_labels">
+        <item>0（关闭 / 默认）</item>
+        <item>20（更集中）</item>
+        <item>50（更分散）</item>
+    </string-array>
+    <string-array name="lm_top_k_values" translatable="false">
+        <item>0</item>
+        <item>20</item>
+        <item>50</item>
+    </string-array>
+    <string-array name="lm_cfg_labels">
+        <item>1.0（无引导）</item>
+        <item>2.0（默认）</item>
+    </string-array>
+    <string-array name="lm_cfg_values" translatable="false">
+        <item>1.0</item>
+        <item>2.0</item>
+    </string-array>
+    <string-array name="inference_steps_labels">
+        <item>auto（turbo=8 / base=50）</item>
+        <item>4（极快 / 实验）</item>
+        <item>8（turbo 默认）</item>
+        <item>12（折中）</item>
+        <item>20（更细）</item>
+        <item>50（base 默认）</item>
+    </string-array>
+    <string-array name="inference_steps_values" translatable="false">
+        <item>0</item>
+        <item>4</item>
+        <item>8</item>
+        <item>12</item>
+        <item>20</item>
+        <item>50</item>
+    </string-array>
+    <string-array name="guidance_labels">
+        <item>auto（默认 1.0）</item>
+        <item>1.0（推荐）</item>
+        <item>1.2（轻微）</item>
+        <item>1.5（实验）</item>
+    </string-array>
+    <string-array name="guidance_values" translatable="false">
+        <item>0</item>
+        <item>1.0</item>
+        <item>1.2</item>
+        <item>1.5</item>
+    </string-array>
+    <string-array name="shift_labels">
+        <item>auto（turbo=3 / base=1）</item>
+        <item>1.0（base）</item>
+        <item>3.0（turbo）</item>
+    </string-array>
+    <string-array name="shift_values" translatable="false">
+        <item>0</item>
+        <item>1.0</item>
+        <item>3.0</item>
+    </string-array>
+    <string-array name="solver_labels">
+        <item>euler（默认 最快）</item>
+        <item>sde（随机 稍慢）</item>
+        <item>dpm3m（三阶）</item>
+        <item>stork4（实验 较慢）</item>
+    </string-array>
+    <string-array name="solver_values" translatable="false">
+        <item>euler</item>
+        <item>sde</item>
+        <item>dpm3m</item>
+        <item>stork4</item>
+    </string-array>
 </resources>
